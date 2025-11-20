@@ -13,6 +13,11 @@ This is a cross-platform native application built with Python and Tkinter that p
 
 ## Recent Changes
 
+- **2025-11-20**: Terminal display fix
+  - Fixed garbled characters and ANSI escape codes in terminal output
+  - Implemented ANSI code filtering for clean, readable terminal display
+  - Terminal now properly shows command output without control characters
+
 - **2025-11-20**: Settings feature added
   - Added gear icon (⚙️) button in AI Assistant header
   - Implemented modal settings dialog for API key management
