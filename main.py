@@ -191,7 +191,7 @@ class AITerminal:
             if self.is_windows:
                 self.process = PtyProcess.spawn([self.shell, '-NoLogo'], dimensions=(30, 100))
             else:
-                self.process = PtyProcess.spawn([self.shell], dimensions=(30, 100))
+                self.process = PtyProcess.spawn([self.shell, '-i'], dimensions=(30, 100))
             
             self.read_thread = threading.Thread(target=self.read_terminal_output, daemon=True)
             self.read_thread.start()
