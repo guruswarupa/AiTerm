@@ -101,8 +101,7 @@ class AITerminal:
             state=tk.NORMAL
         )
         self.terminal_display.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
-        self.terminal_display.bind('<Return>', self.handle_terminal_input)
-        self.terminal_display.bind('<Key>', self.handle_key_press)
+        self.terminal_display.bind('<KeyPress>', self.handle_key_press)
         
         ai_frame = tk.Frame(main_container, bg='#252526', width=400)
         
@@ -234,37 +233,55 @@ class AITerminal:
             self.root.after(50, self.update_terminal_display)
             
     def handle_key_press(self, event):
-        if event.char and event.keysym not in ['Return', 'BackSpace', 'Delete']:
-            try:
-                self.write_to_terminal(event.char)
-                return 'break'
-            except:
-                pass
-        elif event.keysym == 'BackSpace':
-            try:
+        if event.keysym == 'BackSpace':
+            if self.is_windows:
                 self.write_to_terminal('\b')
-                return 'break'
+            else:
+                self.write_to_terminal('\x7f')
+        elif event.keysym == 'Return':
+            self.write_to_terminal('\n')
+        elif event.keysym == 'Tab':
+            self.write_to_terminal('\t')
+        elif event.keysym == 'Up':
+            self.write_to_terminal('\x1b[A')
+        elif event.keysym == 'Down':
+            self.write_to_terminal('\x1b[B')
+        elif event.keysym == 'Right':
+            self.write_to_terminal('\x1b[C')
+        elif event.keysym == 'Left':
+            self.write_to_terminal('\x1b[D')
+        elif event.keysym == 'Home':
+            self.write_to_terminal('\x1b[H')
+        elif event.keysym == 'End':
+            self.write_to_terminal('\x1b[F')
+        elif event.keysym == 'Delete':
+            self.write_to_terminal('\x1b[3~')
+        elif event.state & 0x4 and event.keysym == 'c':
+            if event.state & 0x1:
+                return None
+            try:
+                if self.terminal_display.tag_ranges(tk.SEL):
+                    return None
             except:
                 pass
+            self.write_to_terminal('\x03')
+        elif event.state & 0x4 and event.keysym == 'd':
+            self.write_to_terminal('\x04')
+        elif event.state & 0x4 and event.keysym == 'z':
+            self.write_to_terminal('\x1a')
+        elif event.state & 0x4 and event.keysym == 'l':
+            self.write_to_terminal('\x0c')
+        elif event.char:
+            self.write_to_terminal(event.char)
+        else:
+            return None
+        return 'break'
                 
     def write_to_terminal(self, data):
         if self.process:
             if self.is_windows:
                 data = data.replace('\n', '\r\n')
             self.process.write(data)
-            
-    def handle_terminal_input(self, event):
-        try:
-            index = self.terminal_display.index(tk.INSERT)
-            line = self.terminal_display.get(f"{index} linestart", f"{index} lineend")
-            
-            self.last_command = line.strip()
-            self.output_buffer = []
-            
-            self.write_to_terminal('\n')
-            return 'break'
-        except:
-            pass
             
     def add_ai_message(self, message, tag='ai'):
         self.ai_chat.config(state=tk.NORMAL)

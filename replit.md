@@ -13,6 +13,16 @@ This is a cross-platform native application built with Python and Tkinter that p
 
 ## Recent Changes
 
+- **2025-11-20**: Terminal interaction fixes
+  - Fixed text duplication issue while typing
+  - Implemented comprehensive keyboard handling for all terminal keys
+  - Fixed backspace to work correctly on both Windows and Linux
+  - Enabled text selection and copying (Ctrl+Shift+C or Ctrl+C with selection)
+  - Added support for all control keys (Ctrl+C, Ctrl+D, Ctrl+Z, Ctrl+L)
+  - Implemented arrow key navigation for command history
+  - Added Home, End, Delete, Tab key support
+  - Terminal now properly handles all input without duplication
+
 - **2025-11-20**: Terminal display fix
   - Fixed garbled characters and ANSI escape codes in terminal output
   - Implemented ANSI code filtering for clean, readable terminal display
