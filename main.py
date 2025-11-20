@@ -102,15 +102,33 @@ class AITerminal:
         self.terminal_display.bind('<Key>', self.handle_key_press)
         
         ai_frame = tk.Frame(main_container, bg='#252526', width=400)
+        
+        ai_header = tk.Frame(ai_frame, bg='#2d2d30')
+        ai_header.pack(fill=tk.X)
+        
         ai_label = tk.Label(
-            ai_frame, 
+            ai_header, 
             text="🤖 AI Assistant", 
             bg='#2d2d30', 
             fg='white',
             font=('Arial', 11, 'bold'),
             pady=8
         )
-        ai_label.pack(fill=tk.X)
+        ai_label.pack(side=tk.LEFT, padx=10)
+        
+        settings_button = tk.Button(
+            ai_header,
+            text="⚙️",
+            bg='#2d2d30',
+            fg='white',
+            font=('Arial', 14),
+            command=self.open_settings,
+            cursor='hand2',
+            relief=tk.FLAT,
+            borderwidth=0,
+            padx=10
+        )
+        settings_button.pack(side=tk.RIGHT, padx=10)
         
         self.ai_chat = scrolledtext.ScrolledText(
             ai_frame,
@@ -416,6 +434,144 @@ Solution: [suggested fix or command]"""
         self.ai_chat.config(state=tk.DISABLED)
         
         self.add_ai_message(f"AI Analysis:\n{solution}", 'ai')
+    
+    def open_settings(self):
+        settings_dialog = tk.Toplevel(self.root)
+        settings_dialog.title("Settings")
+        settings_dialog.geometry("500x250")
+        settings_dialog.configure(bg='#1e1e1e')
+        settings_dialog.transient(self.root)
+        settings_dialog.grab_set()
+        
+        center_x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 250
+        center_y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 125
+        settings_dialog.geometry(f"+{center_x}+{center_y}")
+        
+        title_label = tk.Label(
+            settings_dialog,
+            text="⚙️ Settings",
+            bg='#1e1e1e',
+            fg='white',
+            font=('Arial', 14, 'bold'),
+            pady=15
+        )
+        title_label.pack()
+        
+        info_frame = tk.Frame(settings_dialog, bg='#1e1e1e')
+        info_frame.pack(fill=tk.X, padx=20, pady=10)
+        
+        info_label = tk.Label(
+            info_frame,
+            text="Enter your Groq API Key\nGet a free key at: https://console.groq.com/keys",
+            bg='#1e1e1e',
+            fg='#98c379',
+            font=('Arial', 9),
+            justify=tk.LEFT
+        )
+        info_label.pack(anchor=tk.W)
+        
+        key_frame = tk.Frame(settings_dialog, bg='#1e1e1e')
+        key_frame.pack(fill=tk.X, padx=20, pady=10)
+        
+        key_label = tk.Label(
+            key_frame,
+            text="API Key:",
+            bg='#1e1e1e',
+            fg='white',
+            font=('Arial', 10, 'bold')
+        )
+        key_label.pack(anchor=tk.W, pady=(0, 5))
+        
+        key_entry = tk.Entry(
+            key_frame,
+            bg='#2d2d30',
+            fg='white',
+            font=('Courier New', 10),
+            insertbackground='white',
+            show='•'
+        )
+        key_entry.pack(fill=tk.X, ipady=5)
+        key_entry.insert(0, self.groq_api_key if self.groq_api_key else '')
+        key_entry.focus_set()
+        
+        show_var = tk.BooleanVar(value=False)
+        
+        def toggle_show():
+            key_entry.config(show='' if show_var.get() else '•')
+        
+        show_check = tk.Checkbutton(
+            key_frame,
+            text="Show API Key",
+            variable=show_var,
+            command=toggle_show,
+            bg='#1e1e1e',
+            fg='#abb2bf',
+            selectcolor='#2d2d30',
+            activebackground='#1e1e1e',
+            activeforeground='white',
+            font=('Arial', 9)
+        )
+        show_check.pack(anchor=tk.W, pady=(5, 0))
+        
+        button_frame = tk.Frame(settings_dialog, bg='#1e1e1e')
+        button_frame.pack(fill=tk.X, padx=20, pady=20)
+        
+        def save_settings():
+            new_key = key_entry.get().strip()
+            if new_key:
+                success = self.update_api_key(new_key)
+                if success:
+                    settings_dialog.destroy()
+                    messagebox.showinfo("Settings Saved", "API key has been updated successfully!")
+                else:
+                    messagebox.showerror("Invalid API Key", "Failed to initialize Groq client. Please check your API key and try again.")
+            else:
+                messagebox.showwarning("Invalid Input", "Please enter a valid API key")
+        
+        def cancel_settings():
+            settings_dialog.destroy()
+        
+        save_button = tk.Button(
+            button_frame,
+            text="💾 Save",
+            bg='#0e639c',
+            fg='white',
+            font=('Arial', 10, 'bold'),
+            command=save_settings,
+            cursor='hand2',
+            relief=tk.FLAT,
+            padx=20,
+            pady=8
+        )
+        save_button.pack(side=tk.LEFT, padx=(0, 10))
+        
+        cancel_button = tk.Button(
+            button_frame,
+            text="✗ Cancel",
+            bg='#3c3c3c',
+            fg='white',
+            font=('Arial', 10, 'bold'),
+            command=cancel_settings,
+            cursor='hand2',
+            relief=tk.FLAT,
+            padx=20,
+            pady=8
+        )
+        cancel_button.pack(side=tk.LEFT)
+        
+        key_entry.bind('<Return>', lambda e: save_settings())
+        key_entry.bind('<Escape>', lambda e: cancel_settings())
+    
+    def update_api_key(self, new_key):
+        self.groq_api_key = new_key
+        try:
+            self.groq_client = Groq(api_key=new_key)
+            self.add_ai_message("✅ API key updated successfully!", 'system')
+            return True
+        except Exception as e:
+            self.groq_client = None
+            self.add_ai_message(f"❌ Failed to initialize Groq client: {str(e)}", 'error')
+            return False
 
 def main():
     root = tk.Tk()
