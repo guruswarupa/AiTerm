@@ -13,6 +13,13 @@ This is a cross-platform native application built with Python and Tkinter that p
 
 ## Recent Changes
 
+- **2025-11-20**: Settings feature added
+  - Added gear icon (⚙️) button in AI Assistant header
+  - Implemented modal settings dialog for API key management
+  - Added masked entry field with show/hide toggle
+  - Implemented proper error handling for invalid API keys
+  - API key can now be updated at runtime without restarting the app
+
 - **2025-11-20**: Initial implementation
   - Created native desktop GUI with split-pane layout
   - Integrated Groq AI for command assistance
