@@ -17,6 +17,8 @@ This is a cross-platform native application built with Python and Tkinter that p
   - Fixed garbled characters and ANSI escape codes in terminal output
   - Implemented ANSI code filtering for clean, readable terminal display
   - Terminal now properly shows command output without control characters
+  - Fixed bash prompt display by enabling interactive mode (-i flag)
+  - Bash now shows proper prompt with path and $ symbol
 
 - **2025-11-20**: Settings feature added
   - Added gear icon (⚙️) button in AI Assistant header
