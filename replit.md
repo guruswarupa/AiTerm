@@ -13,6 +13,29 @@ This is a cross-platform native application built with Python and Tkinter that p
 
 ## Recent Changes
 
+- **2025-11-20**: GitHub import setup and critical fixes
+  - Changed Windows default shell from PowerShell to cmd for better compatibility
+  - Fixed clear/cls commands to properly clear the terminal screen by detecting ANSI sequences
+  - Restored platform-specific backspace handling (Windows: \b, Linux: DEL)
+  - Implemented persistent API key storage using secure config file (~/.ai_terminal_config.json with chmod 600)
+  - API key now loads from environment variables first, then falls back to config file
+  - Settings dialog now saves API key permanently across sessions
+  - Added explicit feedback for successful/failed API key saves
+  - Completed Replit environment setup with all dependencies installed
+
+- **2025-11-20**: Beautiful UI redesign
+  - Complete visual overhaul with modern, aesthetic design
+  - Implemented purple gradient color scheme (#7b2cbf, #9d4edd, #c77dff)
+  - Updated typography with Segoe UI and Consolas fonts for better readability
+  - Added modern header bars with gradient backgrounds for both panels
+  - Terminal now features neon green text (#00ff88) on dark background for retro-modern look
+  - Enhanced spacing, padding, and borders throughout the interface
+  - Modern flat buttons with hover effects and proper visual feedback
+  - Larger, more comfortable window size (1400x800) for better usability
+  - Improved visual hierarchy and contrast for easier navigation
+  - Polished settings dialog with matching purple theme
+  - Execute/Cancel buttons now feature vibrant colors (green/pink) for clear actions
+
 - **2025-11-20**: Terminal interaction fixes
   - Fixed text duplication issue while typing
   - Implemented comprehensive keyboard handling for all terminal keys
@@ -50,7 +73,7 @@ This is a cross-platform native application built with Python and Tkinter that p
 ### Terminal (Left Pane)
 - Fully functional terminal with your system shell
 - Type commands directly as you would in a normal terminal
-- Cross-platform support (Windows PowerShell / Linux Bash)
+- Cross-platform support (Windows cmd / Linux Bash)
 - Real-time output display
 
 ### AI Assistant (Right Pane)

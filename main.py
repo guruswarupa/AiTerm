@@ -7,6 +7,8 @@ import platform
 import threading
 import queue
 import re
+import json
+from pathlib import Path
 from groq import Groq
 
 IS_WINDOWS = platform.system() == 'Windows'
@@ -29,11 +31,13 @@ else:
 class AITerminal:
     def __init__(self, root):
         self.root = root
-        self.root.title("AI Terminal Assistant")
-        self.root.geometry("1200x700")
-        self.root.configure(bg='#1e1e1e')
+        self.root.title("✨ AI Terminal Assistant")
+        self.root.geometry("1400x800")
+        self.root.configure(bg='#0f0f23')
         
-        self.groq_api_key = os.environ.get('GROQ_API_KEY', '')
+        self.config_file = Path.home() / '.ai_terminal_config.json'
+        
+        self.groq_api_key = self.load_api_key()
         if not self.groq_api_key:
             messagebox.showwarning(
                 "API Key Missing", 
@@ -50,7 +54,9 @@ class AITerminal:
                 self.groq_client = None
         
         self.is_windows = platform.system() == 'Windows'
-        self.shell = 'powershell.exe' if self.is_windows else 'bash'
+        self.shell = 'cmd.exe' if self.is_windows else 'bash'
+        
+        self.current_input_line = ""
         
         self.pending_command = None
         self.last_command = ""
@@ -69,116 +75,216 @@ class AITerminal:
         
         self.setup_ui()
         self.start_terminal()
+    
+    def load_api_key(self):
+        api_key = os.environ.get('GROQ_API_KEY', '')
+        if api_key:
+            return api_key
+        
+        if self.config_file.exists():
+            try:
+                with open(self.config_file, 'r') as f:
+                    config = json.load(f)
+                    api_key = config.get('GROQ_API_KEY', '')
+                    if api_key:
+                        os.environ['GROQ_API_KEY'] = api_key
+                    return api_key
+            except Exception:
+                pass
+        
+        return ''
+    
+    def save_api_key(self, api_key):
+        try:
+            config = {}
+            if self.config_file.exists():
+                try:
+                    with open(self.config_file, 'r') as f:
+                        config = json.load(f)
+                except Exception:
+                    pass
+            
+            config['GROQ_API_KEY'] = api_key
+            
+            with open(self.config_file, 'w') as f:
+                json.dump(config, f)
+            
+            self.config_file.chmod(0o600)
+            
+            return True
+        except Exception as e:
+            print(f"Failed to save API key: {e}")
+            return False
         
     def setup_ui(self):
+        outer_frame = tk.Frame(self.root, bg='#0f0f23')
+        outer_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
+        
         main_container = tk.PanedWindow(
-            self.root, 
+            outer_frame, 
             orient=tk.HORIZONTAL, 
-            bg='#1e1e1e',
-            sashwidth=5,
-            sashrelief=tk.RAISED
+            bg='#0f0f23',
+            sashwidth=8,
+            sashrelief=tk.FLAT,
+            sashpad=3
         )
         main_container.pack(fill=tk.BOTH, expand=True)
         
-        terminal_frame = tk.Frame(main_container, bg='#1e1e1e')
-        terminal_label = tk.Label(
-            terminal_frame, 
-            text="🖥️ Terminal", 
-            bg='#2d2d30', 
-            fg='white',
-            font=('Arial', 11, 'bold'),
-            pady=8
+        terminal_frame = tk.Frame(main_container, bg='#1a1a2e', relief=tk.FLAT, bd=0)
+        
+        terminal_header = tk.Frame(terminal_frame, bg='#16213e', height=60)
+        terminal_header.pack(fill=tk.X)
+        terminal_header.pack_propagate(False)
+        
+        terminal_title_frame = tk.Frame(terminal_header, bg='#16213e')
+        terminal_title_frame.pack(side=tk.LEFT, padx=20, pady=12)
+        
+        terminal_icon = tk.Label(
+            terminal_title_frame,
+            text="💻",
+            bg='#16213e',
+            font=('Segoe UI Emoji', 20)
         )
-        terminal_label.pack(fill=tk.X)
+        terminal_icon.pack(side=tk.LEFT, padx=(0, 10))
+        
+        terminal_label = tk.Label(
+            terminal_title_frame, 
+            text="Terminal", 
+            bg='#16213e', 
+            fg='#e0e0ff',
+            font=('Segoe UI', 14, 'bold')
+        )
+        terminal_label.pack(side=tk.LEFT)
+        
+        terminal_display_frame = tk.Frame(terminal_frame, bg='#1a1a2e')
+        terminal_display_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
         
         self.terminal_display = scrolledtext.ScrolledText(
-            terminal_frame,
-            bg='#1e1e1e',
-            fg='#d4d4d4',
-            font=('Courier New', 10),
-            insertbackground='white',
+            terminal_display_frame,
+            bg='#0a0e27',
+            fg='#00ff88',
+            font=('Consolas', 11),
+            insertbackground='#00ff88',
             wrap=tk.WORD,
-            state=tk.NORMAL
+            state=tk.NORMAL,
+            relief=tk.FLAT,
+            borderwidth=0,
+            highlightthickness=2,
+            highlightbackground='#2a2a4e',
+            highlightcolor='#4a4aff',
+            padx=12,
+            pady=12
         )
-        self.terminal_display.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.terminal_display.pack(fill=tk.BOTH, expand=True)
         self.terminal_display.bind('<KeyPress>', self.handle_key_press)
         
-        ai_frame = tk.Frame(main_container, bg='#252526', width=400)
+        ai_frame = tk.Frame(main_container, bg='#1a1a2e', width=500, relief=tk.FLAT, bd=0)
         
-        ai_header = tk.Frame(ai_frame, bg='#2d2d30')
+        ai_header = tk.Frame(ai_frame, bg='#7b2cbf', height=60)
         ai_header.pack(fill=tk.X)
+        ai_header.pack_propagate(False)
+        
+        ai_title_frame = tk.Frame(ai_header, bg='#7b2cbf')
+        ai_title_frame.pack(side=tk.LEFT, padx=20, pady=12)
+        
+        ai_icon = tk.Label(
+            ai_title_frame,
+            text="✨",
+            bg='#7b2cbf',
+            font=('Segoe UI Emoji', 20)
+        )
+        ai_icon.pack(side=tk.LEFT, padx=(0, 10))
         
         ai_label = tk.Label(
-            ai_header, 
-            text="🤖 AI Assistant", 
-            bg='#2d2d30', 
-            fg='white',
-            font=('Arial', 11, 'bold'),
-            pady=8
+            ai_title_frame, 
+            text="AI Assistant", 
+            bg='#7b2cbf', 
+            fg='#ffffff',
+            font=('Segoe UI', 14, 'bold')
         )
-        ai_label.pack(side=tk.LEFT, padx=10)
+        ai_label.pack(side=tk.LEFT)
         
         settings_button = tk.Button(
             ai_header,
-            text="⚙️",
-            bg='#2d2d30',
+            text="⚙",
+            bg='#9d4edd',
             fg='white',
-            font=('Arial', 14),
+            font=('Segoe UI', 16),
             command=self.open_settings,
             cursor='hand2',
             relief=tk.FLAT,
             borderwidth=0,
-            padx=10
+            padx=12,
+            pady=8,
+            activebackground='#c77dff',
+            activeforeground='white'
         )
-        settings_button.pack(side=tk.RIGHT, padx=10)
+        settings_button.pack(side=tk.RIGHT, padx=15)
+        
+        ai_chat_frame = tk.Frame(ai_frame, bg='#1a1a2e')
+        ai_chat_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
         
         self.ai_chat = scrolledtext.ScrolledText(
-            ai_frame,
-            bg='#252526',
-            fg='white',
-            font=('Arial', 10),
+            ai_chat_frame,
+            bg='#0a0e27',
+            fg='#e0e0ff',
+            font=('Segoe UI', 11),
             wrap=tk.WORD,
-            state=tk.DISABLED
+            state=tk.DISABLED,
+            relief=tk.FLAT,
+            borderwidth=0,
+            highlightthickness=2,
+            highlightbackground='#2a2a4e',
+            highlightcolor='#9d4edd',
+            padx=15,
+            pady=15
         )
-        self.ai_chat.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.ai_chat.pack(fill=tk.BOTH, expand=True)
         
-        self.ai_chat.tag_config('user', foreground='#61afef', font=('Arial', 10, 'bold'))
-        self.ai_chat.tag_config('ai', foreground='#98c379')
-        self.ai_chat.tag_config('system', foreground='#e5c07b')
-        self.ai_chat.tag_config('command', background='#2c313c', foreground='#abb2bf', font=('Courier New', 10))
-        self.ai_chat.tag_config('error', foreground='#e06c75')
+        self.ai_chat.tag_config('user', foreground='#c77dff', font=('Segoe UI', 11, 'bold'))
+        self.ai_chat.tag_config('ai', foreground='#00ff88', font=('Segoe UI', 11))
+        self.ai_chat.tag_config('system', foreground='#ffd700', font=('Segoe UI', 10, 'italic'))
+        self.ai_chat.tag_config('command', background='#16213e', foreground='#00d4ff', font=('Consolas', 10), spacing1=5, spacing3=5)
+        self.ai_chat.tag_config('error', foreground='#ff6b9d', font=('Segoe UI', 11))
         
-        input_frame = tk.Frame(ai_frame, bg='#2d2d30')
-        input_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        input_frame = tk.Frame(ai_frame, bg='#1a1a2e')
+        input_frame.pack(fill=tk.X, padx=12, pady=(0, 12))
+        
+        input_container = tk.Frame(input_frame, bg='#16213e', highlightthickness=2, highlightbackground='#2a2a4e', highlightcolor='#9d4edd')
+        input_container.pack(fill=tk.X)
         
         self.ai_input = tk.Entry(
-            input_frame,
-            bg='#1e1e1e',
-            fg='white',
-            font=('Arial', 10),
-            insertbackground='white'
+            input_container,
+            bg='#16213e',
+            fg='#e0e0ff',
+            font=('Segoe UI', 12),
+            insertbackground='#c77dff',
+            relief=tk.FLAT,
+            borderwidth=0
         )
-        self.ai_input.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
+        self.ai_input.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=15, pady=12)
         self.ai_input.bind('<Return>', lambda e: self.ask_ai())
         
         self.ask_button = tk.Button(
-            input_frame,
-            text="Ask AI",
-            bg='#0e639c',
+            input_container,
+            text="Ask AI ✨",
+            bg='#9d4edd',
             fg='white',
-            font=('Arial', 9, 'bold'),
+            font=('Segoe UI', 11, 'bold'),
             command=self.ask_ai,
             cursor='hand2',
             relief=tk.FLAT,
-            padx=15,
-            pady=5
+            padx=20,
+            pady=10,
+            activebackground='#c77dff',
+            activeforeground='white'
         )
-        self.ask_button.pack(side=tk.RIGHT)
+        self.ask_button.pack(side=tk.RIGHT, padx=8, pady=6)
         
-        main_container.add(terminal_frame, width=800)
-        main_container.add(ai_frame, width=400)
+        main_container.add(terminal_frame, width=850)
+        main_container.add(ai_frame, width=550)
         
-        self.add_ai_message("👋 Ask me for any command and I'll help!", 'system')
+        self.add_ai_message("👋 Welcome! Ask me for any command and I'll help you out!", 'system')
         
     def start_terminal(self):
         if not HAS_PTY:
@@ -188,7 +294,7 @@ class AITerminal:
             self.output_queue = queue.Queue()
             
             if self.is_windows:
-                self.process = PtyProcess.spawn([self.shell, '-NoLogo'], dimensions=(30, 100))
+                self.process = PtyProcess.spawn([self.shell], dimensions=(30, 100))
             else:
                 self.process = PtyProcess.spawn([self.shell, '-i'], dimensions=(30, 100))
             
@@ -203,6 +309,10 @@ class AITerminal:
         while True:
             try:
                 output = self.process.read()
+                
+                if '\x1b[2J' in output or '\x1b[H\x1b[2J' in output or '\x1b[3J' in output:
+                    self.root.after(0, self.clear_terminal_screen)
+                
                 self.output_queue.put(output)
                 self.output_buffer.append(output)
                 
@@ -219,6 +329,9 @@ class AITerminal:
                 
     def strip_ansi_codes(self, text):
         return self.ansi_escape.sub('', text)
+    
+    def clear_terminal_screen(self):
+        self.terminal_display.delete('1.0', tk.END)
     
     def update_terminal_display(self):
         try:
@@ -350,32 +463,38 @@ Assistant: df -h"""
         
         self.pending_command = command
         
-        confirm_frame = tk.Frame(self.ai_chat, bg='#252526')
+        confirm_frame = tk.Frame(self.ai_chat, bg='#0a0e27')
         self.ai_chat.window_create(tk.END, window=confirm_frame)
         
         tk.Button(
             confirm_frame,
             text="✓ Execute",
-            bg='#0e639c',
-            fg='white',
+            bg='#00ff88',
+            fg='#0a0e27',
             command=lambda: self.execute_pending_command(confirm_frame),
             relief=tk.FLAT,
             cursor='hand2',
-            padx=10,
-            pady=3
-        ).pack(side=tk.LEFT, padx=5, pady=5)
+            font=('Segoe UI', 10, 'bold'),
+            padx=18,
+            pady=8,
+            activebackground='#00cc66',
+            activeforeground='#0a0e27'
+        ).pack(side=tk.LEFT, padx=8, pady=8)
         
         tk.Button(
             confirm_frame,
             text="✗ Cancel",
-            bg='#3c3c3c',
+            bg='#ff6b9d',
             fg='white',
             command=lambda: self.cancel_pending_command(confirm_frame),
             relief=tk.FLAT,
             cursor='hand2',
-            padx=10,
-            pady=3
-        ).pack(side=tk.LEFT, padx=5, pady=5)
+            font=('Segoe UI', 10, 'bold'),
+            padx=18,
+            pady=8,
+            activebackground='#ff4477',
+            activeforeground='white'
+        ).pack(side=tk.LEFT, padx=8, pady=8)
         
         self.ai_chat.config(state=tk.NORMAL)
         self.ai_chat.insert(tk.END, "\n")
@@ -461,60 +580,66 @@ Solution: [suggested fix or command]"""
     
     def open_settings(self):
         settings_dialog = tk.Toplevel(self.root)
-        settings_dialog.title("Settings")
-        settings_dialog.geometry("500x250")
-        settings_dialog.configure(bg='#1e1e1e')
+        settings_dialog.title("⚙ Settings")
+        settings_dialog.geometry("550x320")
+        settings_dialog.configure(bg='#0f0f23')
         settings_dialog.transient(self.root)
         settings_dialog.grab_set()
         
-        center_x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 250
-        center_y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 125
+        center_x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 275
+        center_y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 160
         settings_dialog.geometry(f"+{center_x}+{center_y}")
         
+        header = tk.Frame(settings_dialog, bg='#7b2cbf', height=70)
+        header.pack(fill=tk.X)
+        header.pack_propagate(False)
+        
         title_label = tk.Label(
-            settings_dialog,
-            text="⚙️ Settings",
-            bg='#1e1e1e',
+            header,
+            text="⚙ Settings",
+            bg='#7b2cbf',
             fg='white',
-            font=('Arial', 14, 'bold'),
-            pady=15
+            font=('Segoe UI', 18, 'bold'),
+            pady=20
         )
         title_label.pack()
         
-        info_frame = tk.Frame(settings_dialog, bg='#1e1e1e')
-        info_frame.pack(fill=tk.X, padx=20, pady=10)
+        content_frame = tk.Frame(settings_dialog, bg='#0f0f23')
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=25, pady=20)
         
         info_label = tk.Label(
-            info_frame,
+            content_frame,
             text="Enter your Groq API Key\nGet a free key at: https://console.groq.com/keys",
-            bg='#1e1e1e',
-            fg='#98c379',
-            font=('Arial', 9),
+            bg='#0f0f23',
+            fg='#ffd700',
+            font=('Segoe UI', 10),
             justify=tk.LEFT
         )
-        info_label.pack(anchor=tk.W)
-        
-        key_frame = tk.Frame(settings_dialog, bg='#1e1e1e')
-        key_frame.pack(fill=tk.X, padx=20, pady=10)
+        info_label.pack(anchor=tk.W, pady=(0, 15))
         
         key_label = tk.Label(
-            key_frame,
+            content_frame,
             text="API Key:",
-            bg='#1e1e1e',
-            fg='white',
-            font=('Arial', 10, 'bold')
+            bg='#0f0f23',
+            fg='#e0e0ff',
+            font=('Segoe UI', 11, 'bold')
         )
-        key_label.pack(anchor=tk.W, pady=(0, 5))
+        key_label.pack(anchor=tk.W, pady=(0, 8))
+        
+        key_container = tk.Frame(content_frame, bg='#16213e', highlightthickness=2, highlightbackground='#2a2a4e', highlightcolor='#9d4edd')
+        key_container.pack(fill=tk.X, pady=(0, 8))
         
         key_entry = tk.Entry(
-            key_frame,
-            bg='#2d2d30',
-            fg='white',
-            font=('Courier New', 10),
-            insertbackground='white',
-            show='•'
+            key_container,
+            bg='#16213e',
+            fg='#e0e0ff',
+            font=('Consolas', 11),
+            insertbackground='#c77dff',
+            show='•',
+            relief=tk.FLAT,
+            borderwidth=0
         )
-        key_entry.pack(fill=tk.X, ipady=5)
+        key_entry.pack(fill=tk.X, padx=12, pady=10)
         key_entry.insert(0, self.groq_api_key if self.groq_api_key else '')
         key_entry.focus_set()
         
@@ -524,21 +649,18 @@ Solution: [suggested fix or command]"""
             key_entry.config(show='' if show_var.get() else '•')
         
         show_check = tk.Checkbutton(
-            key_frame,
+            content_frame,
             text="Show API Key",
             variable=show_var,
             command=toggle_show,
-            bg='#1e1e1e',
-            fg='#abb2bf',
-            selectcolor='#2d2d30',
-            activebackground='#1e1e1e',
-            activeforeground='white',
-            font=('Arial', 9)
+            bg='#0f0f23',
+            fg='#c77dff',
+            selectcolor='#16213e',
+            activebackground='#0f0f23',
+            activeforeground='#e0e0ff',
+            font=('Segoe UI', 10)
         )
-        show_check.pack(anchor=tk.W, pady=(5, 0))
-        
-        button_frame = tk.Frame(settings_dialog, bg='#1e1e1e')
-        button_frame.pack(fill=tk.X, padx=20, pady=20)
+        show_check.pack(anchor=tk.W, pady=(0, 20))
         
         def save_settings():
             new_key = key_entry.get().strip()
@@ -546,7 +668,7 @@ Solution: [suggested fix or command]"""
                 success = self.update_api_key(new_key)
                 if success:
                     settings_dialog.destroy()
-                    messagebox.showinfo("Settings Saved", "API key has been updated successfully!")
+                    messagebox.showinfo("Settings Saved", "API key has been updated and saved successfully!")
                 else:
                     messagebox.showerror("Invalid API Key", "Failed to initialize Groq client. Please check your API key and try again.")
             else:
@@ -555,31 +677,38 @@ Solution: [suggested fix or command]"""
         def cancel_settings():
             settings_dialog.destroy()
         
+        button_frame = tk.Frame(content_frame, bg='#0f0f23')
+        button_frame.pack(fill=tk.X)
+        
         save_button = tk.Button(
             button_frame,
             text="💾 Save",
-            bg='#0e639c',
+            bg='#9d4edd',
             fg='white',
-            font=('Arial', 10, 'bold'),
+            font=('Segoe UI', 11, 'bold'),
             command=save_settings,
             cursor='hand2',
             relief=tk.FLAT,
-            padx=20,
-            pady=8
+            padx=25,
+            pady=10,
+            activebackground='#c77dff',
+            activeforeground='white'
         )
         save_button.pack(side=tk.LEFT, padx=(0, 10))
         
         cancel_button = tk.Button(
             button_frame,
             text="✗ Cancel",
-            bg='#3c3c3c',
-            fg='white',
-            font=('Arial', 10, 'bold'),
+            bg='#2a2a4e',
+            fg='#e0e0ff',
+            font=('Segoe UI', 11, 'bold'),
             command=cancel_settings,
             cursor='hand2',
             relief=tk.FLAT,
-            padx=20,
-            pady=8
+            padx=25,
+            pady=10,
+            activebackground='#3a3a5e',
+            activeforeground='white'
         )
         cancel_button.pack(side=tk.LEFT)
         
@@ -590,7 +719,14 @@ Solution: [suggested fix or command]"""
         self.groq_api_key = new_key
         try:
             self.groq_client = Groq(api_key=new_key)
-            self.add_ai_message("✅ API key updated successfully!", 'system')
+            
+            os.environ['GROQ_API_KEY'] = new_key
+            
+            if self.save_api_key(new_key):
+                self.add_ai_message("✅ API key updated and saved successfully!", 'system')
+            else:
+                self.add_ai_message("✅ API key updated for this session (save failed)", 'system')
+            
             return True
         except Exception as e:
             self.groq_client = None
