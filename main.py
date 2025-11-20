@@ -6,6 +6,7 @@ import sys
 import platform
 import threading
 import queue
+import re
 from groq import Groq
 
 IS_WINDOWS = platform.system() == 'Windows'
@@ -55,6 +56,8 @@ class AITerminal:
         self.last_command = ""
         self.output_buffer = []
         self.process = None
+        
+        self.ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
         
         if not HAS_PTY:
             messagebox.showerror(
@@ -215,11 +218,15 @@ class AITerminal:
             except Exception:
                 break
                 
+    def strip_ansi_codes(self, text):
+        return self.ansi_escape.sub('', text)
+    
     def update_terminal_display(self):
         try:
             while True:
                 output = self.output_queue.get_nowait()
-                self.terminal_display.insert(tk.END, output)
+                clean_output = self.strip_ansi_codes(output)
+                self.terminal_display.insert(tk.END, clean_output)
                 self.terminal_display.see(tk.END)
         except queue.Empty:
             pass
