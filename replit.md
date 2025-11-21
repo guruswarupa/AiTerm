@@ -13,6 +13,15 @@ This is a cross-platform native application built with Python and Tkinter that p
 
 ## Recent Changes
 
+- **2025-11-20**: Backspace fix and executable build system
+  - Fixed backspace character display issue - backspace now properly deletes characters
+  - Implemented widget-level backspace handling that works across output chunks
+  - Added carriage return (\r) handling for proper line overwrites
+  - Created automated build script (build.py) for generating standalone executables
+  - Added comprehensive BUILD_INSTRUCTIONS.md with step-by-step guide
+  - Executables can be built for Windows (.exe) and Linux/Mac (binary) using PyInstaller
+  - Build script automatically detects OS and creates appropriate executable
+
 - **2025-11-20**: GitHub import setup and critical fixes
   - Changed Windows default shell from PowerShell to cmd for better compatibility
   - Fixed clear/cls commands to properly clear the terminal screen by detecting ANSI sequences

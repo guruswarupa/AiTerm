@@ -63,7 +63,7 @@ class AITerminal:
         self.output_buffer = []
         self.process = None
         
-        self.ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        self.ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\][^\x07\x1B]*(?:\x07|\x1B\\))')
         
         if not HAS_PTY:
             messagebox.showerror(
@@ -328,7 +328,13 @@ class AITerminal:
                 break
                 
     def strip_ansi_codes(self, text):
-        return self.ansi_escape.sub('', text)
+        cleaned = self.ansi_escape.sub('', text)
+        cleaned = re.sub(r'\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)', '', cleaned)
+        cleaned = re.sub(r'\x9D[^\x9C]*\x9C', '', cleaned)
+        cleaned = re.sub(r'^\d+;\d+;\d+;\d+\s+', '', cleaned, flags=re.MULTILINE)
+        cleaned = re.sub(r'\d+;\d+;\d+;\d+\s+[-\\|/]\s+', '', cleaned)
+        cleaned = re.sub(r'^\d+;[^\n\r]+?(?=\n|\r|$)', '', cleaned, flags=re.MULTILINE)
+        return cleaned
     
     def clear_terminal_screen(self):
         self.terminal_display.delete('1.0', tk.END)
@@ -338,7 +344,26 @@ class AITerminal:
             while True:
                 output = self.output_queue.get_nowait()
                 clean_output = self.strip_ansi_codes(output)
-                self.terminal_display.insert(tk.END, clean_output)
+                
+                i = 0
+                while i < len(clean_output):
+                    char = clean_output[i]
+                    
+                    if char == '\b' or char == '\x7f':
+                        current_content = self.terminal_display.get('1.0', tk.END)
+                        if len(current_content) > 1:
+                            self.terminal_display.delete(f"{tk.END}-2c")
+                    elif char == '\r':
+                        if i + 1 < len(clean_output) and clean_output[i + 1] == '\n':
+                            pass
+                        else:
+                            current_line_start = self.terminal_display.index(f"{tk.END} linestart")
+                            self.terminal_display.delete(current_line_start, f"{tk.END}-1c")
+                    else:
+                        self.terminal_display.insert(tk.END, char)
+                    
+                    i += 1
+                
                 self.terminal_display.see(tk.END)
         except queue.Empty:
             pass
