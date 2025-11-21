@@ -34,11 +34,11 @@ class AITerminal:
     def __init__(self, root):
         self.root = root
         self.root.title("✨ AI Terminal Assistant")
-        self.root.geometry("1400x900")
+        self.root.geometry("1400x950")
         self.root.configure(bg='#0f0f23')
         
         # Set minimum window size
-        self.root.minsize(1000, 600)
+        self.root.minsize(1200, 700)
         
         # Configuration
         self.config_file = Path.home() / '.ai_terminal_config.json'
@@ -421,7 +421,7 @@ class AITerminal:
         self.terminal_display.bind('<KeyPress>', self.handle_key_press)
         
         # AI frame
-        ai_frame = tk.Frame(main_container, bg='#1a1a2e', width=500, relief=tk.FLAT, bd=0)
+        ai_frame = tk.Frame(main_container, bg='#1a1a2e', width=550, relief=tk.FLAT, bd=0)
         
         ai_header = tk.Frame(ai_frame, bg='#7b2cbf', height=60)
         ai_header.pack(fill=tk.X)
@@ -496,12 +496,13 @@ class AITerminal:
         self.ai_chat.tag_config('timestamp', foreground='#808090', font=('Segoe UI', 9))
         
         # Input frame
-        input_frame = tk.Frame(ai_frame, bg='#1a1a2e')
+        input_frame = tk.Frame(ai_frame, bg='#1a1a2e', height=80)
         input_frame.pack(fill=tk.X, padx=12, pady=(0, 12))
+        input_frame.pack_propagate(False)
         
         input_container = tk.Frame(input_frame, bg='#16213e', highlightthickness=2, 
                                   highlightbackground='#2a2a4e', highlightcolor='#9d4edd')
-        input_container.pack(fill=tk.X)
+        input_container.pack(fill=tk.BOTH, expand=True)
         
         self.ai_input = tk.Entry(
             input_container,
@@ -527,9 +528,9 @@ class AITerminal:
             cursor='hand2',
             relief=tk.FLAT,
             padx=20,
-            pady=10
+            pady=12
         )
-        self.ask_button.pack(side=tk.RIGHT, padx=8, pady=6)
+        self.ask_button.pack(side=tk.RIGHT, padx=8, pady=8)
         
         # Hover effect for ask button
         self.ask_button.bind('<Enter>', lambda e: self.ask_button.config(bg='#c77dff'))
@@ -1090,13 +1091,13 @@ Solution: [suggested fix or command]"""
         """Open settings dialog"""
         settings_dialog = tk.Toplevel(self.root)
         settings_dialog.title("⚙ Settings")
-        settings_dialog.geometry("600x400")
+        settings_dialog.geometry("650x550")
         settings_dialog.configure(bg='#0f0f23')
         settings_dialog.transient(self.root)
         settings_dialog.grab_set()
         
-        center_x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 300
-        center_y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 200
+        center_x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 325
+        center_y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 275
         settings_dialog.geometry(f"+{center_x}+{center_y}")
         
         header = tk.Frame(settings_dialog, bg='#7b2cbf', height=70)
@@ -1229,11 +1230,11 @@ Solution: [suggested fix or command]"""
             settings_dialog.destroy()
         
         button_frame = tk.Frame(content_frame, bg='#0f0f23')
-        button_frame.pack(fill=tk.X)
+        button_frame.pack(fill=tk.X, pady=(20, 0))
         
         save_button = tk.Button(
             button_frame,
-            text="💾 Save",
+            text="💾 Save & Close",
             bg='#9d4edd',
             fg='white',
             font=('Segoe UI', 11, 'bold'),
@@ -1241,7 +1242,7 @@ Solution: [suggested fix or command]"""
             cursor='hand2',
             relief=tk.FLAT,
             padx=25,
-            pady=10
+            pady=12
         )
         save_button.pack(side=tk.LEFT, padx=(0, 10))
         
@@ -1255,7 +1256,7 @@ Solution: [suggested fix or command]"""
             cursor='hand2',
             relief=tk.FLAT,
             padx=25,
-            pady=10
+            pady=12
         )
         cancel_button.pack(side=tk.LEFT)
         
